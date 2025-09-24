@@ -116,11 +116,14 @@ end
 local function GetClosestPlayer()
     if not Environment.Locked then
         RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
-        for _, v in next, workspace:GetChildren() do
+        
+        for _, v in pairs(workspace:GetChildren()) do
             if v.Name == "soldier_model" and v:IsA("Model") and not v:FindFirstChild("friendly_marker") then
                 local targetPart = v:FindFirstChild(Environment.Settings.LockPart)
                 local humanoid = v:FindFirstChildOfClass("Humanoid")
-                if targetPart and humanoid then
+                local rootPart = v:FindFirstChild("HumanoidRootPart")
+                
+                if targetPart and humanoid and rootPart then
                     if Environment.Settings.AliveCheck and humanoid.Health <= 0 then continue end
                     if Environment.Settings.WallCheck and #(Camera:GetPartsObscuringTarget({targetPart.Position}, v:GetDescendants())) > 0 then continue end
                     
@@ -134,14 +137,33 @@ local function GetClosestPlayer()
                 end
             end
         end
-    elseif Environment.Locked and Environment.Locked:FindFirstChild(Environment.Settings.LockPart) then
-        local targetPart = Environment.Locked:FindFirstChild(Environment.Settings.LockPart)
-        if not targetPart or Environment.Locked:FindFirstChild("friendly_marker") or (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(Camera:WorldToViewportPoint(targetPart.Position).X, Camera:WorldToViewportPoint(targetPart.Position).Y)).Magnitude > RequiredDistance then
+    elseif Environment.Locked then
+        if not Environment.Locked.Parent or Environment.Locked:FindFirstChild("friendly_marker") then
             Environment.Locked = nil
             if Animation then
                 Animation:Cancel()
             end
             Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.Color)
+        else
+            local targetPart = Environment.Locked:FindFirstChild(Environment.Settings.LockPart)
+            if targetPart then
+                local Vector, OnScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                local Distance = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(Vector.X, Vector.Y)).Magnitude
+                
+                if Distance > RequiredDistance or not OnScreen then
+                    Environment.Locked = nil
+                    if Animation then
+                        Animation:Cancel()
+                    end
+                    Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.Color)
+                end
+            else
+                Environment.Locked = nil
+                if Animation then
+                    Animation:Cancel()
+                end
+                Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.Color)
+            end
         end
     end
 end
@@ -201,6 +223,7 @@ local function Load()
 		else
 			Environment.FOVCircle.Visible = false
 		end
+		
 		if Running and Environment.Settings.Enabled then
 			GetClosestPlayer()
 			if Environment.Locked and Environment.Locked:FindFirstChild(Environment.Settings.LockPart) and not Environment.Locked:FindFirstChild("friendly_marker") then
