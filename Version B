@@ -113,17 +113,34 @@ local function GetPredictionValue()
 	return Environment.PredictionSettings.DefaultPrediction
 end
 
+local enemyCache = {}
+local lastScan = 0
+
+local function UpdateEnemyCache()
+    local currentTime = tick()
+    if currentTime - lastScan < 0.5 then return end
+    lastScan = currentTime
+    
+    enemyCache = {}
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name == "soldier_model" and v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and not v:FindFirstChild("friendly_marker") then
+            table.insert(enemyCache, v)
+        end
+    end
+end
+
 local function GetClosestPlayer()
+    UpdateEnemyCache()
+    
     if not Environment.Locked then
         RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
         
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v.Name == "soldier_model" and v:IsA("Model") and not v:FindFirstChild("friendly_marker") then
+        for _, v in pairs(enemyCache) do
+            if v.Parent then
                 local targetPart = v:FindFirstChild(Environment.Settings.LockPart)
                 local humanoid = v:FindFirstChildOfClass("Humanoid")
-                local rootPart = v:FindFirstChild("HumanoidRootPart")
                 
-                if targetPart and humanoid and rootPart then
+                if targetPart and humanoid then
                     if Environment.Settings.AliveCheck and humanoid.Health <= 0 then continue end
                     if Environment.Settings.WallCheck and #(Camera:GetPartsObscuringTarget({targetPart.Position}, v:GetDescendants())) > 0 then continue end
                     
