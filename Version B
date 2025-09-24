@@ -7,34 +7,17 @@ local Environment = getgenv().Aimbot
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
 local Camera = game:GetService("Workspace").CurrentCamera
-local Stats = game:GetService("Stats")
 
-local LocalPlayer = Players.LocalPlayer
-local Title = "Exunys Developer"
-local FileNames = {"Aimbot", "Configuration.json", "Drawing.json", "Prediction.json"}
-local Typing, Running, Animation, RequiredDistance, ServiceConnections = false, false, nil, 2000, {}
-
-if isfolder(Title) then
-    delfolder(Title)
-end
-
-local mousemoverel = mousemoverel or (Input and Input.MouseMove)
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local Typing, Running, Animation, ServiceConnections = false, false, nil, {}
 
 Environment.Settings = {
-	SendNotifications = false,
-	SaveSettings = true,
-	ReloadOnTeleport = false,
 	Enabled = false,
-	TeamCheck = false,
 	AliveCheck = true,
 	WallCheck = false,
 	Sensitivity = 0,
-	ThirdPerson = false,
-	ThirdPersonSensitivity = 3,
 	TriggerKey = "MouseButton2",
 	Toggle = false,
 	LockPart = "Head"
@@ -52,28 +35,8 @@ Environment.FOVSettings = {
 	Filled = false
 }
 
-Environment.PredictionSettings = {
-	Enabled = false,
-	PredictionMode = "Default",
-	DefaultPrediction = 0.165,
-	PingBasedMultiplier = 0.001,
-	CustomPrediction = 0.2
-}
-
 Environment.FOVCircle = Drawing.new("Circle")
 Environment.Locked = nil
-
-local function Encode(Table)
-	if Table and type(Table) == "table" then
-		return HttpService:JSONEncode(Table)
-	end
-end
-
-local function Decode(String)
-	if String and type(String) == "string" then
-		return HttpService:JSONDecode(String)
-	end
-end
 
 local function GetColor(Color)
 	local R = tonumber(string.match(Color, "([%d]+)[%s]*,[%s]*[%d]+[%s]*,[%s]*[%d]+"))
@@ -82,61 +45,12 @@ local function GetColor(Color)
 	return Color3.fromRGB(R, G, B)
 end
 
-local function SaveSettings()
-	if Environment.Settings.SaveSettings then
-		if isfile(Title.."/"..FileNames[1].."/"..FileNames[2]) then
-			writefile(Title.."/"..FileNames[1].."/"..FileNames[2], Encode(Environment.Settings))
-		end
-		if isfile(Title.."/"..FileNames[1].."/"..FileNames[3]) then
-			writefile(Title.."/"..FileNames[1].."/"..FileNames[3], Encode(Environment.FOVSettings))
-		end
-		if isfile(Title.."/"..FileNames[1].."/"..FileNames[4]) then
-			writefile(Title.."/"..FileNames[1].."/"..FileNames[4], Encode(Environment.PredictionSettings))
-		end
-	end
-end
-
-local function GetPredictionValue()
-	if not Environment.PredictionSettings.Enabled then
-		return 0
-	end
-	
-	if Environment.PredictionSettings.PredictionMode == "Default" then
-		return Environment.PredictionSettings.DefaultPrediction
-	elseif Environment.PredictionSettings.PredictionMode == "Ping" then
-		local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-		return ping * Environment.PredictionSettings.PingBasedMultiplier
-	elseif Environment.PredictionSettings.PredictionMode == "Custom" then
-		return Environment.PredictionSettings.CustomPrediction
-	end
-	
-	return Environment.PredictionSettings.DefaultPrediction
-end
-
-local enemyCache = {}
-local lastScan = 0
-
-local function UpdateEnemyCache()
-    local currentTime = tick()
-    if currentTime - lastScan < 0.5 then return end
-    lastScan = currentTime
-    
-    enemyCache = {}
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name == "soldier_model" and v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and not v:FindFirstChild("friendly_marker") then
-            table.insert(enemyCache, v)
-        end
-    end
-end
-
-local function GetClosestPlayer()
-    UpdateEnemyCache()
-    
+local function GetClosestEnemy()
     if not Environment.Locked then
-        RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
+        local RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
         
-        for _, v in pairs(enemyCache) do
-            if v.Parent then
+        for _, v in pairs(workspace:GetChildren()) do
+            if v.Name == "soldier_model" and v:IsA("Model") and not v:FindFirstChild("friendly_marker") then
                 local targetPart = v:FindFirstChild(Environment.Settings.LockPart)
                 local humanoid = v:FindFirstChildOfClass("Humanoid")
                 
@@ -161,26 +75,6 @@ local function GetClosestPlayer()
                 Animation:Cancel()
             end
             Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.Color)
-        else
-            local targetPart = Environment.Locked:FindFirstChild(Environment.Settings.LockPart)
-            if targetPart then
-                local Vector, OnScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                local Distance = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(Vector.X, Vector.Y)).Magnitude
-                
-                if Distance > RequiredDistance or not OnScreen then
-                    Environment.Locked = nil
-                    if Animation then
-                        Animation:Cancel()
-                    end
-                    Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.Color)
-                end
-            else
-                Environment.Locked = nil
-                if Animation then
-                    Animation:Cancel()
-                end
-                Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.Color)
-            end
         end
     end
 end
@@ -192,39 +86,6 @@ end)
 ServiceConnections.TypingEndedConnection = UserInputService.TextBoxFocusReleased:Connect(function()
 	Typing = false
 end)
-
-if Environment.Settings.SaveSettings then
-	if not isfolder(Title) then
-		makefolder(Title)
-	end
-	if not isfolder(Title.."/"..FileNames[1]) then
-		makefolder(Title.."/"..FileNames[1])
-	end
-	if not isfile(Title.."/"..FileNames[1].."/"..FileNames[2]) then
-		writefile(Title.."/"..FileNames[1].."/"..FileNames[2], Encode(Environment.Settings))
-	else
-		Environment.Settings = Decode(readfile(Title.."/"..FileNames[1].."/"..FileNames[2]))
-	end
-	if not isfile(Title.."/"..FileNames[1].."/"..FileNames[3]) then
-		writefile(Title.."/"..FileNames[1].."/"..FileNames[3], Encode(Environment.FOVSettings))
-	else
-		Environment.Visuals = Decode(readfile(Title.."/"..FileNames[1].."/"..FileNames[3]))
-	end
-	if not isfile(Title.."/"..FileNames[1].."/"..FileNames[4]) then
-		writefile(Title.."/"..FileNames[1].."/"..FileNames[4], Encode(Environment.PredictionSettings))
-	else
-		Environment.PredictionSettings = Decode(readfile(Title.."/"..FileNames[1].."/"..FileNames[4]))
-	end
-	coroutine.wrap(function()
-		while wait(10) and Environment.Settings.SaveSettings do
-			SaveSettings()
-		end
-	end)()
-else
-	if isfolder(Title) then
-		delfolder(Title)
-	end
-end
 
 local function Load()
 	ServiceConnections.RenderSteppedConnection = RunService.RenderStepped:Connect(function()
@@ -242,23 +103,15 @@ local function Load()
 		end
 		
 		if Running and Environment.Settings.Enabled then
-			GetClosestPlayer()
+			GetClosestEnemy()
 			if Environment.Locked and Environment.Locked:FindFirstChild(Environment.Settings.LockPart) and not Environment.Locked:FindFirstChild("friendly_marker") then
 				local targetPart = Environment.Locked:FindFirstChild(Environment.Settings.LockPart)
-				local predictionValue = GetPredictionValue()
-				local predictedPosition = targetPart.Position + (targetPart.Velocity * predictionValue)
 				
-				if Environment.Settings.ThirdPerson then
-					Environment.Settings.ThirdPersonSensitivity = math.clamp(Environment.Settings.ThirdPersonSensitivity, 0.1, 5)
-					local Vector = Camera:WorldToViewportPoint(predictedPosition)
-					mousemoverel((Vector.X - UserInputService:GetMouseLocation().X) * Environment.Settings.ThirdPersonSensitivity, (Vector.Y - UserInputService:GetMouseLocation().Y) * Environment.Settings.ThirdPersonSensitivity)
+				if Environment.Settings.Sensitivity > 0 then
+					Animation = TweenService:Create(Camera, TweenInfo.new(Environment.Settings.Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)})
+					Animation:Play()
 				else
-					if Environment.Settings.Sensitivity > 0 then
-						Animation = TweenService:Create(Camera, TweenInfo.new(Environment.Settings.Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)})
-						Animation:Play()
-					else
-						Camera.CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)
-					end
+					Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
 				end
 				Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.LockedColor)
 			end
@@ -335,7 +188,6 @@ end
 Environment.Functions = {}
 
 function Environment.Functions:Exit()
-	SaveSettings()
 	for _, v in next, ServiceConnections do
 		v:Disconnect()
 	end
@@ -345,49 +197,10 @@ function Environment.Functions:Exit()
 end
 
 function Environment.Functions:Restart()
-	SaveSettings()
 	for _, v in next, ServiceConnections do
 		v:Disconnect()
 	end
 	Load()
-end
-
-function Environment.Functions:ResetSettings()
-	Environment.Settings = {
-		SendNotifications = true,
-		SaveSettings = true,
-		ReloadOnTeleport = true,
-		Enabled = true,
-		TeamCheck = false,
-		AliveCheck = true,
-		WallCheck = false,
-		Sensitivity = 0,
-		ThirdPerson = false,
-		ThirdPersonSensitivity = 3,
-		TriggerKey = "MouseButton2",
-		Toggle = false,
-		LockPart = "Head"
-	}
-	
-	Environment.FOVSettings = {
-		Enabled = true,
-		Visible = true,
-		Amount = 90,
-		Color = "255, 255, 255",
-		LockedColor = "255, 70, 70",
-		Transparency = 0.5,
-		Sides = 60,
-        Thickness = 1,
-		Filled = false
-	}
-	
-	Environment.PredictionSettings = {
-		Enabled = false,
-		PredictionMode = "Default",
-		DefaultPrediction = 0.165,
-		PingBasedMultiplier = 0.001,
-		CustomPrediction = 0.2
-	}
 end
 
 if not Drawing or not getgenv then
