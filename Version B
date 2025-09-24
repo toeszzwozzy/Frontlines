@@ -48,9 +48,11 @@ end
 local function GetClosestEnemy()
     if not Environment.Locked then
         local RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
+        local foundEnemies = 0
         
-        for _, v in pairs(workspace:GetChildren()) do
+        for _, v in pairs(workspace:GetDescendants()) do
             if v.Name == "soldier_model" and v:IsA("Model") and not v:FindFirstChild("friendly_marker") then
+                foundEnemies = foundEnemies + 1
                 local targetPart = v:FindFirstChild(Environment.Settings.LockPart)
                 local humanoid = v:FindFirstChildOfClass("Humanoid")
                 
@@ -64,9 +66,14 @@ local function GetClosestEnemy()
                     if Distance < RequiredDistance and OnScreen then
                         RequiredDistance = Distance
                         Environment.Locked = v
+                        print("Locked onto enemy at distance:", Distance)
                     end
                 end
             end
+        end
+        
+        if foundEnemies == 0 then
+            print("No enemies found")
         end
     elseif Environment.Locked then
         if not Environment.Locked.Parent or Environment.Locked:FindFirstChild("friendly_marker") then
@@ -75,6 +82,7 @@ local function GetClosestEnemy()
                 Animation:Cancel()
             end
             Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.Color)
+            print("Lost target")
         end
     end
 end
@@ -138,6 +146,7 @@ local function Load()
 	        end)
 	        pcall(function()
 	            if Input.UserInputType == Enum.UserInputType[Environment.Settings.TriggerKey] then
+	                print("Right click detected, Running:", Running)
 	                if Environment.Settings.Toggle then
 	                    Running = not Running
 	                    if not Running then
@@ -149,6 +158,7 @@ local function Load()
 	                    end
 	                else
 	                    Running = true
+	                    print("Aimbot activated")
 	                end
 	            end
 	        end)
