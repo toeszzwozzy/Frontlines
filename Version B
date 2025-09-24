@@ -49,10 +49,7 @@ local function GetClosestEnemy()
         local RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
         
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj.Name == "soldier_model" and obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-                task.wait(0.1)
-                
-                if not obj:FindFirstChild("friendly_marker") then
+            if obj.Name == "soldier_model" and obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and not obj:FindFirstChild("friendly_marker") then
                     local targetPart = obj:FindFirstChild(Environment.Settings.LockPart)
                     local humanoid = obj:FindFirstChildOfClass("Humanoid")
                     
@@ -67,7 +64,6 @@ local function GetClosestEnemy()
                             Environment.Locked = obj
                         end
                     end
-                end
             end
         end
     elseif Environment.Locked then
