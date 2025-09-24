@@ -49,25 +49,30 @@ local function GetClosestEnemy()
         local RequiredDistance = Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000
         
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj.Name == "soldier_model" and obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and not obj:FindFirstChild("friendly_marker") then
-                local targetPart = obj:FindFirstChild(Environment.Settings.LockPart)
-                local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            if obj.Name == "soldier_model" and obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+                task.wait(0.1)
                 
-                if targetPart and humanoid then
-                    if Environment.Settings.AliveCheck and humanoid.Health <= 0 then continue end
+                if not obj:FindFirstChild("friendly_marker") then
+                    local targetPart = obj:FindFirstChild(Environment.Settings.LockPart)
+                    local humanoid = obj:FindFirstChildOfClass("Humanoid")
                     
-                    local Vector, OnScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                    local Distance = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(Vector.X, Vector.Y)).Magnitude
-                    
-                    if Distance < RequiredDistance and OnScreen then
-                        RequiredDistance = Distance
-                        Environment.Locked = obj
+                    if targetPart and humanoid then
+                        if Environment.Settings.AliveCheck and humanoid.Health <= 0 then continue end
+                        
+                        local Vector, OnScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                        local Distance = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(Vector.X, Vector.Y)).Magnitude
+                        
+                        if Distance < RequiredDistance and OnScreen then
+                            RequiredDistance = Distance
+                            Environment.Locked = obj
+                        end
                     end
                 end
             end
         end
     elseif Environment.Locked then
-        if not Environment.Locked.Parent or Environment.Locked:FindFirstChild("friendly_marker") then
+        local humanoid = Environment.Locked:FindFirstChildOfClass("Humanoid")
+        if not Environment.Locked.Parent or Environment.Locked:FindFirstChild("friendly_marker") or (Environment.Settings.AliveCheck and humanoid and humanoid.Health <= 0) then
             Environment.Locked = nil
             if Animation then Animation:Cancel() end
             Environment.FOVCircle.Color = GetColor(Environment.FOVSettings.Color)
