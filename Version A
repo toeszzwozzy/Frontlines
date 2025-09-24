@@ -276,17 +276,17 @@ local function CreateESPForEnemy(enemy)
 end
 
 local function ScanForEnemies()
-	for _, obj in pairs(workspace:GetChildren()) do
+	for _, obj in pairs(workspace:GetDescendants()) do
 		if obj.Name == "soldier_model" and obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and not trackedEnemies[obj] then
 			CreateESPForEnemy(obj)
 		end
 	end
 end
 
-workspace.ChildAdded:Connect(function(child)
+workspace.DescendantAdded:Connect(function(child)
 	if child.Name == "soldier_model" and child:IsA("Model") then
-		task.wait(0.1)
-		if child:FindFirstChild("HumanoidRootPart") then
+		task.wait(1)
+		if child:FindFirstChild("HumanoidRootPart") and not child:FindFirstChild("friendly_marker") then
 			CreateESPForEnemy(child)
 		end
 	end
