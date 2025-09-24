@@ -49,54 +49,24 @@ BoxC.Name = "Box"
 
 local Higlight = Instance.new("ScreenGui", game.Workspace)
 
-local function AddHighlight()
-	local Highlight = Instance.new("Highlight")
-	Highlight.Parent = Higlight
-	Highlight.Name = "EnemyHighlight"
-	Highlight.Enabled = ESP.OutLines.Enabled
+local trackedEnemies = {}
+
+local function CreateESPForEnemy(enemy)
+	if trackedEnemies[enemy] then return end
+	trackedEnemies[enemy] = true
 	
-	local co = coroutine.create(function()
-		while wait(.1) do
-			local char = workspace:FindFirstChild("soldier_model")
-			if char and char:IsA("Model") and not char:FindFirstChild("friendly_marker") and char:FindFirstChild("HumanoidRootPart") then
-				Highlight.Adornee = char
-				
-				if ESP.OutLines.Enabled then
-					Highlight.Enabled = true
-				else
-					Highlight.Enabled = false
-				end
-
-				if ESP.OutLines.TeamColor then
-					Highlight.FillColor = Color3.fromRGB(255,0,0)
-				else
-					Highlight.FillColor = ESP.OutLines.FillCollor
-				end
-
-				if ESP.OutLines.AllwaysShow then
-					Highlight.DepthMode = "AlwaysOnTop"
-				else
-					Highlight.DepthMode = "Occluded"
-				end
-
-				Highlight.OutlineTransparency = ESP.OutLines.OutlineTrancparency
-				Highlight.OutlineColor = ESP.OutLines.OutlineColor
-				Highlight.FillTransparency = ESP.OutLines.FillTrancparenct
-			else
-				Highlight.Enabled = false
-			end
-		end
-	end)
-	coroutine.resume(co)
-end
-
-local function AddBox()
+	local highlight = Instance.new("Highlight")
+	highlight.Parent = Higlight
+	highlight.Name = enemy.Name .. "_Highlight"
+	highlight.Adornee = enemy
+	
 	local bbg = Instance.new("BillboardGui", BoxC)
-	bbg.Name = "EnemyBox"
+	bbg.Name = enemy.Name .. "_Box"
 	bbg.AlwaysOnTop = true
 	bbg.Size = UDim2.new(4,0,5.4,0)
 	bbg.ClipsDescendants = false
 	bbg.Enabled = false
+	bbg.Adornee = enemy:FindFirstChild("HumanoidRootPart")
 
 	local outlines = Instance.new("Frame", bbg)
 	outlines.Size = UDim2.new(1,0,1,0)
@@ -128,6 +98,7 @@ local function AddBox()
 	info.AlwaysOnTop = true
 	info.ClipsDescendants = false
 	info.Enabled = false
+	info.Adornee = enemy:FindFirstChild("HumanoidRootPart")
 	
 	local namelabel = Instance.new("TextLabel", info)
 	namelabel.Name = "namelabel"
@@ -160,6 +131,7 @@ local function AddBox()
 	forhealth.AlwaysOnTop = true
 	forhealth.ClipsDescendants = false
 	forhealth.Enabled = false
+	forhealth.Adornee = enemy:FindFirstChild("HumanoidRootPart")
 
 	local healthbar = Instance.new("Frame", forhealth)
 	healthbar.Name = "healthbar"
@@ -176,24 +148,43 @@ local function AddBox()
 	bar.Position = UDim2.new(0,0,1,0)
 	bar.Size = UDim2.new(1,0,1,0)
 
-	local co = coroutine.create(function()
-		while wait(0.1) do
-			local char = workspace:FindFirstChild("soldier_model")
-			if char and char:IsA("Model") and not char:FindFirstChild("friendly_marker") and char:FindFirstChild("HumanoidRootPart") then
-				bbg.Adornee = char.HumanoidRootPart
-				info.Adornee = char.HumanoidRootPart
-				forhealth.Adornee = char.HumanoidRootPart
+	local tracer = Instance.new("Frame")
+	tracer.Parent = TracersG
+	tracer.Name = enemy.Name .. "_Tracer"
+	tracer.Active = false
+	tracer.AnchorPoint = Vector2.new(.5, .5)
+	tracer.Visible = false
 
+	local co = coroutine.create(function()
+		while enemy.Parent and enemy:FindFirstChild("HumanoidRootPart") do
+			wait(0.1)
+			
+			ESP.Box.Box = getgenv().EspEnabled
+			ESP.Box.Health = getgenv().HealthEnabled
+			ESP.Tracers.Enabled = getgenv().TracersEnabled
+			ESP.Box.Name = getgenv().NameEnabled
+			ESP.OutLines.Enabled = getgenv().SimpleEnabled
+			ESP.Box.Distance = getgenv().DistanceEnabled
+			ESP.Box.BoxColor = getgenv().BoxColor
+			ESP.Tracers.Color = getgenv().TracerColor
+			
+			if not enemy:FindFirstChild("friendly_marker") then
 				if ESP.Box.Box then
 					outlines.Visible = true
+					bbg.Enabled = true
 				else
 					outlines.Visible = false
+					bbg.Enabled = false
 				end
 
-				outlines.BackgroundTransparency = 1
+				if ESP.OutLines.Enabled then
+					highlight.Enabled = true
+				else
+					highlight.Enabled = false
+				end
 
 				if ESP.Box.Health then
-					local humanoid = char:FindFirstChildOfClass("Humanoid")
+					local humanoid = enemy:FindFirstChildOfClass("Humanoid")
 					if humanoid then
 						healthl.Text = "Health: "..math.floor(humanoid.Health)
 						healthbar.bar.Size = UDim2.new(1,0,humanoid.Health/humanoid.MaxHealth,0)
@@ -209,13 +200,16 @@ local function AddBox()
 						healthl.Visible = true
 						healthbar.Visible = true
 					end
+					forhealth.Enabled = true
 				else
 					healthl.Visible = false
 					healthbar.Visible = false
+					forhealth.Enabled = false
 				end
 
 				if ESP.Box.Name then
 					namelabel.Visible = true
+					info.Enabled = true
 				else
 					namelabel.Visible = false
 				end
@@ -224,15 +218,12 @@ local function AddBox()
 					distancel.Visible = true
 					local playerRoot = PLAYER.Character and PLAYER.Character:FindFirstChild("HumanoidRootPart")
 					if playerRoot then
-						distancel.Text = "Distance: "..math.floor(0.5+(playerRoot.Position - char.HumanoidRootPart.Position).magnitude)
+						distancel.Text = "Distance: "..math.floor(0.5+(playerRoot.Position - enemy.HumanoidRootPart.Position).magnitude)
 					end
+					info.Enabled = true
 				else
 					distancel.Visible = false
 				end
-
-				bbg.Enabled = true
-				info.Enabled = true
-				forhealth.Enabled = true
 
 				outlines.BackgroundColor3 = ESP.Box.BoxColor
 				left.BackgroundColor3 = ESP.Box.BoxColor
@@ -242,74 +233,68 @@ local function AddBox()
 				healthl.TextColor3 = ESP.Box.BoxColor
 				distancel.TextColor3 = ESP.Box.BoxColor
 				namelabel.TextColor3 = Color3.fromRGB(255,255,255)
-			else
-				bbg.Enabled = false
-				bbg.Adornee = nil
-				info.Adornee = nil
-				info.Enabled = false
-				forhealth.Adornee = nil
-				forhealth.Enabled = false
-			end
-		end 
-	end)
-	coroutine.resume(co)
-end
 
-local function AddTracers()
-	local tracer = Instance.new("Frame")
-	tracer.Parent = TracersG
-	tracer.Name = "EnemyTracer"
-	tracer.Active = false
-	tracer.AnchorPoint = Vector2.new(.5, .5)
-	tracer.Visible = false
+				highlight.FillColor = ESP.OutLines.FillCollor
+				highlight.OutlineColor = ESP.OutLines.OutlineColor
+				highlight.FillTransparency = ESP.OutLines.FillTrancparenct
+				highlight.OutlineTransparency = ESP.OutLines.OutlineTrancparency
+				highlight.DepthMode = ESP.OutLines.AllwaysShow and "AlwaysOnTop" or "Occluded"
 
-	local co = coroutine.create(function()
-		game:GetService("RunService").RenderStepped:Connect(function()
-			ESP.Box.Box = getgenv().EspEnabled
-			ESP.Box.Health = getgenv().HealthEnabled
-			ESP.Tracers.Enabled = getgenv().TracersEnabled
-			ESP.Box.Name = getgenv().NameEnabled
-			ESP.OutLines.Enabled = getgenv().SimpleEnabled
-			ESP.Box.Distance = getgenv().DistanceEnabled
-			ESP.Box.BoxColor = getgenv().BoxColor
-			ESP.Tracers.Color = getgenv().TracerColor
-			
-			local char = workspace:FindFirstChild("soldier_model")
-			if char and char:IsA("Model") and not char:FindFirstChild("friendly_marker") and char:FindFirstChild("HumanoidRootPart") then
-				local TargetPart = char.HumanoidRootPart
-				local ScreenPoint, OnScreen = CurrentCam:WorldToScreenPoint(TargetPart.Position)
-				local distance = math.floor(0.5+(CurrentCam.CFrame.Position - TargetPart.Position).magnitude)
-
-				local screenpointmain = Vector2.new(ScreenPoint.X, ScreenPoint.Y + (2500 / distance))
-				local Origin = Vector2.new(CurrentCam.ViewportSize.X/2, CurrentCam.ViewportSize.Y - 1)
-				local Position = (Origin + screenpointmain) / 2
-				local Length = (Origin - screenpointmain).Magnitude
-				tracer.Rotation = math.deg(math.atan2(screenpointmain.Y - Origin.Y, screenpointmain.X - Origin.X))
-
-				if OnScreen then
-					if ESP.Tracers.Enabled and OnScreen then
-						tracer.Visible = true
-					else
-						tracer.Visible = false
-					end
-
+				local ScreenPoint, OnScreen = CurrentCam:WorldToScreenPoint(enemy.HumanoidRootPart.Position)
+				if OnScreen and ESP.Tracers.Enabled then
+					local distance = math.floor(0.5+(CurrentCam.CFrame.Position - enemy.HumanoidRootPart.Position).magnitude)
+					local screenpointmain = Vector2.new(ScreenPoint.X, ScreenPoint.Y + (2500 / distance))
+					local Origin = Vector2.new(CurrentCam.ViewportSize.X/2, CurrentCam.ViewportSize.Y - 1)
+					local Position = (Origin + screenpointmain) / 2
+					local Length = (Origin - screenpointmain).Magnitude
+					tracer.Rotation = math.deg(math.atan2(screenpointmain.Y - Origin.Y, screenpointmain.X - Origin.X))
 					tracer.BackgroundColor3 = ESP.Tracers.Color
 					tracer.BorderColor3 = Color3.fromRGB(27, 42, 53)
 					tracer.Position = UDim2.new(0, Position.X, 0, Position.Y)
 					tracer.Size = UDim2.new(0, Length, 0, 2)
+					tracer.Visible = true
 				else
 					tracer.Visible = false
 				end
 			else
+				bbg.Enabled = false
+				info.Enabled = false
+				forhealth.Enabled = false
+				highlight.Enabled = false
 				tracer.Visible = false
 			end
-		end)
+		end
+		
+		trackedEnemies[enemy] = nil
+		if bbg then bbg:Destroy() end
+		if info then info:Destroy() end
+		if forhealth then forhealth:Destroy() end
+		if highlight then highlight:Destroy() end
+		if tracer then tracer:Destroy() end
 	end)
 	coroutine.resume(co)
 end
 
-task.wait()
+local function ScanForEnemies()
+	for _, obj in pairs(workspace:GetChildren()) do
+		if obj.Name == "soldier_model" and obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and not trackedEnemies[obj] then
+			CreateESPForEnemy(obj)
+		end
+	end
+end
 
-AddHighlight()
-AddBox()
-AddTracers()
+workspace.ChildAdded:Connect(function(child)
+	if child.Name == "soldier_model" and child:IsA("Model") then
+		task.wait(0.1)
+		if child:FindFirstChild("HumanoidRootPart") then
+			CreateESPForEnemy(child)
+		end
+	end
+end)
+
+task.spawn(function()
+	while true do
+		ScanForEnemies()
+		wait(1)
+	end
+end)
