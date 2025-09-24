@@ -53,11 +53,6 @@ local trackedEnemies = {}
 
 local function CreateESPForEnemy(enemy)
 	if trackedEnemies[enemy] then return end
-	
-	task.wait(0.5)
-	
-	if enemy:FindFirstChild("friendly_marker") then return end
-	
 	trackedEnemies[enemy] = true
 	
 	local highlight = Instance.new("Highlight")
@@ -173,11 +168,7 @@ local function CreateESPForEnemy(enemy)
 			ESP.Box.BoxColor = getgenv().BoxColor
 			ESP.Tracers.Color = getgenv().TracerColor
 			
-			local humanoid = enemy:FindFirstChildOfClass("Humanoid")
-			local isAlive = humanoid and humanoid.Health > 0
-			local isEnemy = not enemy:FindFirstChild("friendly_marker")
-			
-			if isEnemy and isAlive then
+			if not enemy:FindFirstChild("friendly_marker") then
 				if ESP.Box.Box then
 					outlines.Visible = true
 					bbg.Enabled = true
